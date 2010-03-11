@@ -12,7 +12,11 @@ TARGETS :=
 # this space is initialized with a rom call to rom_data_init
 TARGETS_WITH_ROM_VARS := linux
 
-include $(MC1322X)/Makefile.include
+submodule: 
+	git submodule update --init
+	$(MAKE)
+
+-include $(MC1322X)/Makefile.include
 
 
 
