@@ -136,8 +136,6 @@ void main(void) {
 				if( ( p = get_free_packet() ) ) {
 
 					p->length = uart1_getc();
-					/* linux gives us a checksum, but the radio is going */
-					/* to add it automatically */
 					
 					for(i=0; i < p->length; i++) {
 						p->data[ i + p->offset] = uart1_getc();
