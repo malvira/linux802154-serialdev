@@ -90,9 +90,9 @@ void main(void) {
 			switch(cmd)
 			{
 			case CMD_OPEN:
-				radio_on();
 				set_power(0x12); /* 4.5dbm */
 				set_channel(0); /* channel 11 */
+				radio_on();
 				printf("zb");
 				uart1_putc(RESP_OPEN);
 				uart1_putc(STATUS_SUCCESS);
