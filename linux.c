@@ -45,6 +45,7 @@ void main(void) {
 	static volatile uint8_t state = IDLE_MODE;
 	volatile packet_t *p = 0;
 
+	trim_xtal();
 	uart1_init(INC, MOD, SAMP);
 	vreg_init();
 	maca_init();
