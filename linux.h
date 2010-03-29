@@ -8,6 +8,7 @@
 #define START_BYTE2	'b'
 #define MAX_DATA_SIZE	127
 
+/* states set by linux */
 #define IDLE_MODE	0x00
 #define RX_MODE		0x02
 #define TX_MODE		0x03

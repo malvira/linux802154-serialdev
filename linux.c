@@ -38,6 +38,12 @@ void give_to_linux(volatile packet_t *p) {
 /* and 802.15.4 is 11-26 (for 2.4GHz) */
 #define PHY_CHANNEL_OFFSET 1 
 
+static uint8_t have_packet = 0;
+
+void maca_rx_callback(volatile packet_t *p __attribute__((unused))) {
+	have_packet = 1;
+}
+
 void main(void) {	
 	volatile uint8_t sb[NUM_START_BYTES];
 	volatile uint32_t i, timeout;
@@ -49,7 +55,7 @@ void main(void) {
 	uart1_init(INC, MOD, SAMP);
 	vreg_init();
 	maca_init();
-	radio_off();
+	maca_off();
 
 	while(1) {
 		
@@ -61,12 +67,31 @@ void main(void) {
 		/* recieve bytes until we see the first start byte */
 		/* this syncs up to the commands */
 		while(sb[0] != START_BYTE1) {
-			while(!uart1_can_get() && 
-			      ((p = rx_packet()) == 0)) { continue; }
-			if(p) { 
+			while(!uart1_can_get() &&
+			      (state != RX_MODE) &&
+			      (have_packet != 0)
+				) 
+			{
+				if((state == TX_MODE) &&
+				   (tx_head == 0)) {
+					/* this could happen if the RX_MODE */
+					/* set_state command is missed */
+					state = RX_MODE;
+				} else {
+					/* tx_head is non-zero and state is TX_MODE */
+					/* but for some reason we got here */ 
+					/* turn the radio off and on */
+					maca_off();
+					maca_on();
+				}
+				continue; 
+			}
+			if((p = rx_packet())) { 
 				give_to_linux(p);
 				free_packet(p);
 				continue;
+			} else {
+				have_packet = 0;
 			}
 			if(uart1_can_get()) { sb[0] = uart1_getc(); }
 		}
@@ -93,23 +118,23 @@ void main(void) {
 			case CMD_OPEN:
 				set_power(0x12); /* 4.5dbm */
 				set_channel(0); /* channel 11 */
-				radio_on();
+				maca_on();
 				printf("zb");
 				uart1_putc(RESP_OPEN);
 				uart1_putc(STATUS_SUCCESS);
 				break;
 			case CMD_CLOSE:
-				radio_off();
+//				maca_off();
 				free_all_packets();
 				printf("zb");
 				uart1_putc(RESP_CLOSE);
 				uart1_putc(STATUS_SUCCESS);
 				break;
 			case CMD_SET_CHANNEL:
-				radio_off();				
+				maca_off();				
 				parm1 = uart1_getc();
 				set_channel(parm1-PHY_CHANNEL_OFFSET);
-				radio_on();
+				maca_on();
 				printf("zb");
 				uart1_putc(RESP_SET_CHANNEL);
 				uart1_putc(STATUS_SUCCESS);
