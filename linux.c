@@ -67,23 +67,23 @@ void main(void) {
 		/* recieve bytes until we see the first start byte */
 		/* this syncs up to the commands */
 		while(sb[0] != START_BYTE1) {
+			if((state == TX_MODE) &&
+			   (tx_head == 0)) {
+				/* this could happen if the RX_MODE */
+				/* set_state command is missed */
+				state = RX_MODE;
+			} else {
+				/* tx_head is non-zero and state is TX_MODE */
+				/* but for some reason we got here */ 
+				/* turn the radio off and on */
+				maca_off();
+				maca_on();
+			}
 			while(!uart1_can_get() &&
 			      (state != RX_MODE) &&
 			      (have_packet != 0)
 				) 
 			{
-				if((state == TX_MODE) &&
-				   (tx_head == 0)) {
-					/* this could happen if the RX_MODE */
-					/* set_state command is missed */
-					state = RX_MODE;
-				} else {
-					/* tx_head is non-zero and state is TX_MODE */
-					/* but for some reason we got here */ 
-					/* turn the radio off and on */
-					maca_off();
-					maca_on();
-				}
 				continue; 
 			}
 			if((p = rx_packet())) { 
