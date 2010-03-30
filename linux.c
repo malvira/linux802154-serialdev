@@ -72,7 +72,7 @@ void main(void) {
 				/* this could happen if the RX_MODE */
 				/* set_state command is missed */
 				state = RX_MODE;
-			} else {
+			} else if (tx_head != 0) {
 				/* tx_head is non-zero and state is TX_MODE */
 				/* but for some reason we got here */ 
 				/* turn the radio off and on */
