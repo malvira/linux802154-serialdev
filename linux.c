@@ -4,6 +4,12 @@
 #include <mc1322x.h>
 #include <board.h>
 #include <stdio.h> /* For printf() */
+#include <errno.h>
+
+/* Issues */
+/* handle state=TX_STATE, tx_head != 0 in wait for start1 condition better */
+/* we can get into getc when there isn't a pending character */
+/* maybe this should timeout / protect all the getc's with a uart1_can_get */
 
 void give_to_linux(volatile packet_t *p) {
 	uint8_t i;
@@ -33,7 +39,7 @@ void give_to_linux(volatile packet_t *p) {
 //#define SAMP UCON_SAMP_16X
 
 /* How long to wait for command bytes */
-#define COMMAND_TIMEOUT  4096
+#define GETC_TIMEOUT  4096
 /* linux uses channels 1-16 the maca driver expects 0-15 */
 /* and 802.15.4 is 11-26 (for 2.4GHz) */
 #define PHY_CHANNEL_OFFSET 1 
@@ -44,9 +50,20 @@ void maca_rx_callback(volatile packet_t *p __attribute__((unused))) {
 	have_packet = 1;
 }
 
+int timed_getc(volatile uint8_t *c) {
+	volatile uint32_t timeout;
+	for(timeout = 0; timeout < GETC_TIMEOUT; timeout++) {
+		if(uart1_can_get()) {
+			*c = uart1_getc();
+			return 1;
+		} 
+	}
+	return -ETIMEDOUT;
+}
+
 void main(void) {	
 	volatile uint8_t sb[NUM_START_BYTES];
-	volatile uint32_t i, timeout;
+	volatile uint32_t i;
 	volatile uint8_t cmd, parm1;
 	static volatile uint8_t state = IDLE_MODE;
 	volatile packet_t *p = 0;
@@ -72,46 +89,35 @@ void main(void) {
 				/* this could happen if the RX_MODE */
 				/* set_state command is missed */
 				state = RX_MODE;
-			} else if (tx_head != 0) {
-				/* tx_head is non-zero and state is TX_MODE */
-				/* but for some reason we got here */ 
-				/* turn the radio off and on */
-				maca_off();
-				maca_on();
-			}
-			while(!uart1_can_get() &&
-			      (state != RX_MODE) &&
-			      (have_packet != 0)
-				) 
-			{
-				continue; 
-			}
-			if((p = rx_packet())) { 
-				give_to_linux(p);
-				free_packet(p);
-				continue;
-			} else {
-				have_packet = 0;
+			} 
+			if(state == RX_MODE) {
+				if((p = rx_packet())) { 
+					give_to_linux(p);
+					free_packet(p);
+					continue;
+				} else {
+					have_packet = 0;
+				}
 			}
 			if(uart1_can_get()) { sb[0] = uart1_getc(); }
 		}
 
 		/* receive start bytes */
 		for(i=1; i<NUM_START_BYTES; i++) {
-			timeout=0;
-			while(!uart1_can_get() &&
-			      (timeout < COMMAND_TIMEOUT)) { timeout++; }
-			sb[i] = uart1_getc();
+			if(timed_getc(&sb[i]) < 0) {
+				/* timedout without bytes */
+				/* invalidate the start command */
+				sb[0] = 'X'; sb[1] = 'X';
+			}
 		}
 		
 		if(start_command()) {
 			/* do a command */
 			cmd = 0;
 
-			timeout = 0;
-			while(!uart1_can_get() &&
-			      (timeout < COMMAND_TIMEOUT)) { timeout++; };
-			cmd = uart1_getc();
+			if(timed_getc(&cmd) < 0 ) {
+				cmd = 0;
+			}
 			
 			switch(cmd)
 			{
@@ -132,7 +138,12 @@ void main(void) {
 				break;
 			case CMD_SET_CHANNEL:
 				maca_off();				
-				parm1 = uart1_getc();
+				if(timed_getc(&parm1) < 0 ) {
+					printf("zb");
+					uart1_putc(RESP_SET_CHANNEL);
+					uart1_putc(STATUS_ERR);
+					break;
+				}
 				set_channel(parm1-PHY_CHANNEL_OFFSET);
 				maca_on();
 				printf("zb");
@@ -151,7 +162,13 @@ void main(void) {
 				uart1_putc(STATUS_SUCCESS);
 				break;
 			case CMD_SET_STATE:
-				state = uart1_getc();
+				if(timed_getc(&state) < 0 ) {
+					printf("zb");
+					uart1_putc(RESP_SET_STATE);
+					uart1_putc(STATUS_ERR);
+					state = RX_MODE;
+					break;
+				}
 				printf("zb");
 				uart1_putc(RESP_SET_STATE);
 				uart1_putc(STATUS_SUCCESS);
@@ -161,10 +178,24 @@ void main(void) {
 				/* send packet here */
 				if( ( p = get_free_packet() ) ) {
 
-					p->length = uart1_getc();
+					if(timed_getc(&p->length) < 0 ) {
+						printf("zb");
+						uart1_putc(RESP_XMIT_BLOCK);
+						uart1_putc(STATUS_ERR);
+						state = RX_MODE;
+						free_packet(p);
+						break;
+					}
 					
 					for(i=0; i < p->length; i++) {
-						p->data[ i + p->offset] = uart1_getc();
+						if(timed_getc(&(p->data[ i + p->offset])) < 0 ) {
+							printf("zb");
+							uart1_putc(RESP_XMIT_BLOCK);
+							uart1_putc(STATUS_ERR);
+							state = RX_MODE;
+							free_packet(p);
+							break;
+						}
 					}
 				      					
 					tx_packet(p);
