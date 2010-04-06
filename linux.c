@@ -84,6 +84,9 @@ void main(void) {
 		/* recieve bytes until we see the first start byte */
 		/* this syncs up to the commands */
 		while(sb[0] != START_BYTE1) {
+
+			check_maca();
+
 			if((state == TX_MODE) &&
 			   (tx_head == 0)) {
 				/* this could happen if the RX_MODE */
