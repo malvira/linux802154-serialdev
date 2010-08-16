@@ -133,7 +133,7 @@ void main(void) {
 			{
 			case CMD_OPEN:
 				set_power(0x12); /* 4.5dbm */
-				set_channel(0); /* channel 11 */
+				set_channel(15); /* channel 26 */
 				maca_on();
 				printf("zb");
 				uart1_putc(RESP_OPEN);
