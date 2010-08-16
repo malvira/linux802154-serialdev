@@ -46,6 +46,7 @@ enum {
 	DATA_XMIT_STREAM	= 0x0a, /* u8 id, u8 c */
 	RESP_RECV_BLOCK		= 0x0b, /* u8 id, u8 status */
 	RESP_RECV_STREAM	= 0x0c, /* u8 id, u8 status */
+	CMD_ADDRESS		= 0x0d, /* u8 id */
 
 	/* Firmware to Driver */
 	RESP_OPEN		= 0x81, /* u8 id, u8 status */
@@ -57,7 +58,8 @@ enum {
 	RESP_XMIT_BLOCK		= 0x89, /* u8 id, u8 status */
 	RESP_XMIT_STREAM	= 0x8a, /* u8 id, u8 status */
 	DATA_RECV_BLOCK		= 0x8b, /* u8 id, u8 lq, u8 len, u8 data[len] */
-	DATA_RECV_STREAM	= 0x8c  /* u8 id, u8 c */
+	DATA_RECV_STREAM	= 0x8c, /* u8 id, u8 c */
+	RESP_ADDRESS		= 0x8d, /* u8 id, u8 status, u8 u8 u8 u8 u8 u8 u8 u8 address */
 };
 
 enum {

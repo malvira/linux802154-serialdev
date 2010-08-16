@@ -6,6 +6,14 @@
 #include <stdio.h> /* For printf() */
 #include <errno.h>
 
+#ifndef MAC_ADDR_NVM
+#define MAC_ADDR_NVM 0x1E000
+#endif
+
+#ifndef IEEE802154_ADDR_LEN
+#define IEEE802154_ADDR_LEN 8
+#endif
+
 /* Issues */
 /* handle state=TX_STATE, tx_head != 0 in wait for start1 condition better */
 /* we can get into getc when there isn't a pending character */
@@ -70,7 +78,6 @@ void main(void) {
 
 	trim_xtal();
 	uart1_init(INC, MOD, SAMP);
-	vreg_init();
 	maca_init();
 	maca_off();
 
@@ -213,6 +220,25 @@ void main(void) {
 					uart1_putc(STATUS_BUSY);
 				}
 				break;
+			case CMD_ADDRESS: {
+				uint8_t buf[IEEE802154_ADDR_LEN];
+				nvmType_t type = 0;
+				nvmErr_t err;	
+				int i;
+
+				printf("zb");
+				uart1_putc(RESP_ADDRESS);
+
+				vreg_init();
+				err = nvm_detect(gNvmInternalInterface_c, &type);
+				err = nvm_read(gNvmInternalInterface_c, type, buf, MAC_ADDR_NVM, IEEE802154_ADDR_LEN);
+
+				uart1_putc(STATUS_SUCCESS);
+
+				for (i = 0; i < IEEE802154_ADDR_LEN; i++)
+					uart1_putc(buf[i]);
+				break;
+			}
 			default:
 				break;
 			}
