@@ -27,7 +27,7 @@ void give_to_linux(volatile packet_t *p) {
 	/* send data_recv_block */
 	printf("zb");
 	uart1_putc(DATA_RECV_BLOCK);
-	uart1_putc(0);
+	uart1_putc(p->lqi);
 	uart1_putc(p->length); 
 
 	for(i=0; i < p->length ; i++) {
