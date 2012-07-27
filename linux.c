@@ -204,7 +204,7 @@ void main(void) {
 							uart1_putc(STATUS_ERR);
 							state = RX_MODE;
 							free_packet(p);
-							break;
+							goto data_xmit_block_end;
 						}
 					}
 				      					
@@ -219,6 +219,7 @@ void main(void) {
 					uart1_putc(RESP_XMIT_BLOCK);
 					uart1_putc(STATUS_BUSY);
 				}
+data_xmit_block_end:
 				break;
 			case CMD_ADDRESS: {
 				uint8_t buf[IEEE802154_ADDR_LEN];
